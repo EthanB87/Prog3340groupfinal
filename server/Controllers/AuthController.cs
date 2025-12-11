@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using midterm_backend.Data;
+using Prog3340GroupFinal.Data;
 using System.Security.Claims;
 
 namespace Prog3340GroupFinal.Controllers

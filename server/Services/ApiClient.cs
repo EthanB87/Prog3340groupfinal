@@ -13,7 +13,7 @@ namespace Prog3340GroupFinal.Services
         }
         private void AttachJwtToken(ClaimsPrincipal user)
         { var token = _jwtService.GenerateToken(user); _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token); 
-        s}
+        }
         public async Task<(string, string)> GetProtectedDataAsync(string path, ClaimsPrincipal principal) 
         { 
             AttachJwtToken(principal); 
