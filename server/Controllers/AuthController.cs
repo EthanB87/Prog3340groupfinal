@@ -99,14 +99,12 @@ namespace Prog3340GroupFinal.Controllers
             var email = User.FindFirst(ClaimTypes.Email)?.Value;
 
             var appUsers = _db.AppUsers.ToList();
-            var customers = _db.Customers.ToList();
 
             return Ok(new
             {
                 currentEmail = email,
                 appUsers = appUsers,
-                customers = customers,
-                customerMatchingEmail = customers.FirstOrDefault(c => c.Username == email)
+                userMatchingEmail = appUsers.FirstOrDefault(c => c.Username == email)
             });
         }
 
@@ -178,6 +176,5 @@ namespace Prog3340GroupFinal.Controllers
                 user.Role
             });
         }
-
     }
 }
