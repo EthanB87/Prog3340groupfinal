@@ -1,6 +1,6 @@
 ﻿
 using Microsoft.EntityFrameworkCore;
-using midterm_backend.Data;
+using Prog3340GroupFinal.Data;
 
 namespace Prog3340GroupFinal.Repositories
 {
