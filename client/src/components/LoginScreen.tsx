@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail, Lock, Loader2 } from "lucide-react";
 
 interface LoginScreenProps {
@@ -17,6 +17,15 @@ export function LoginScreen({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if (token) {
+      saveToken(token); // store token in localStorage / state
+      window.history.replaceState({}, "", "/"); // remove token from URL
+    }
+  }, []);
 
   // --- 1. LOCAL (EMAIL/PASSWORD) LOGIN HANDLER (JWT Flow) ---
   const handleLocalLogin = async (e: React.FormEvent) => {
@@ -58,18 +67,15 @@ export function LoginScreen({
 
   // --- 2. GOOGLE (OIDC) LOGIN HANDLER (Cookie Flow) ---
   const handleGoogleLogin = () => {
-    // Redirects the browser to the API's login challenge endpoint.
-    // The API will handle the OAuth handshake and redirect back to 'returnUrl'.
+    // This is your backend endpoint that starts the Google OAuth flow
     const loginUrl = `${apiBaseUrl}/api/Auth/login`;
-
-    // Optionally, you can add a returnUrl query parameter
-    // so the API redirects the user back to a specific page after successful auth.
-    // For example, redirect back to the app's root page ('/')
+    // Return URL after successful login
     const returnUrl = window.location.origin;
+
+    // Redirect browser to backend login endpoint
     const finalRedirectUrl = `${loginUrl}?returnUrl=${encodeURIComponent(
       returnUrl
     )}`;
-
     window.location.href = finalRedirectUrl;
   };
 
