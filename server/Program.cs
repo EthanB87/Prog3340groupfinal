@@ -15,12 +15,19 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<ITaskCacheService, TaskCacheService>();
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
+
+builder.Services.AddMemoryCache();
+builder.Services.Configure<TaskCacheOptions>(options =>
+{
+    options.TaskTtlMinutes = 5;
+});
 
 
 // Add services to the container.
