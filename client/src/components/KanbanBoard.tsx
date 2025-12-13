@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Plus, RefreshCcw } from 'lucide-react';
+import { Plus, RefreshCcw, X } from 'lucide-react';
 import { TaskCard } from './TaskCard';
 import { Task, TaskStatus } from '../types/task';
-import { fetchTasks, updateTaskStatus } from '../api/tasks';
+import { createTask, fetchTasks, updateTaskStatus } from '../api/tasks';
 
 interface KanbanBoardProps {
   apiBaseUrl: string;
@@ -28,6 +28,11 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [createStatus, setCreateStatus] = useState<TaskStatus | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const loadTasks = async () => {
     try {
@@ -98,6 +103,7 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
             Refresh
           </button>
           {error && <span className="text-red-600 text-sm">{error}</span>}
+          {createError && <span className="text-red-600 text-sm">{createError}</span>}
         </div>
       </div>
 
@@ -141,10 +147,78 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
                   ))}
 
                   {/* Add Task Button */}
-                  <button className="w-full flex items-center gap-2 p-3 text-gray-600 hover:bg-white hover:bg-opacity-50 rounded-lg transition-colors">
-                    <Plus className="w-4 h-4" />
-                    <span>Add task</span>
-                  </button>
+                  {createStatus === column.id ? (
+                    <div className="bg-white rounded-lg shadow p-3 space-y-2">
+                      <input
+                        className="w-full border border-gray-300 rounded px-2 py-1"
+                        placeholder="Task title"
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                      />
+                      <textarea
+                        className="w-full border border-gray-300 rounded px-2 py-1"
+                        placeholder="Description (optional)"
+                        rows={2}
+                        value={newDescription}
+                        onChange={(e) => setNewDescription(e.target.value)}
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={async () => {
+                            if (!newTitle.trim()) {
+                              setCreateError('Title is required');
+                              return;
+                            }
+                            try {
+                              setIsCreating(true);
+                              setCreateError(null);
+                              const created = await createTask(apiBaseUrl, {
+                                title: newTitle,
+                                description: newDescription,
+                                status: column.id,
+                              });
+                              setTasks((prev) => [created, ...prev]);
+                              setNewTitle('');
+                              setNewDescription('');
+                              setCreateStatus(null);
+                            } catch (err) {
+                              setCreateError(err instanceof Error ? err.message : 'Failed to create task');
+                            } finally {
+                              setIsCreating(false);
+                            }
+                          }}
+                          disabled={isCreating}
+                          className="px-3 py-2 bg-[#0052cc] text-white rounded hover:bg-[#0747a6] disabled:opacity-60"
+                        >
+                          {isCreating ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCreateStatus(null);
+                            setNewTitle('');
+                            setNewDescription('');
+                            setCreateError(null);
+                          }}
+                          className="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg inline-flex items-center gap-1"
+                        >
+                          <X className="w-4 h-4" /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setCreateStatus(column.id);
+                        setNewTitle('');
+                        setNewDescription('');
+                        setCreateError(null);
+                      }}
+                      className="w-full flex items-center gap-2 p-3 text-gray-600 hover:bg-white hover:bg-opacity-50 rounded-lg transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add task</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );

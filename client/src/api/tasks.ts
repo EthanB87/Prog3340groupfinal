@@ -99,6 +99,39 @@ const mapToApiStatus = (status: TaskStatus): number => {
   }
 };
 
+export const createTask = async (
+  apiBaseUrl: string,
+  payload: {
+    title: string;
+    description?: string;
+    status: TaskStatus;
+    assignedToId?: number | null;
+  }
+): Promise<Task> => {
+  const response = await fetch(`${apiBaseUrl}/api/tasks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      title: payload.title,
+      description: payload.description,
+      status: mapToApiStatus(payload.status),
+      assignedToId: payload.assignedToId ?? null,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to create task: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const body = await response.json();
+  return mapApiTask(body);
+};
+
 export const fetchTasks = async (apiBaseUrl: string): Promise<Task[]> => {
   const response = await fetch(`${apiBaseUrl}/api/tasks`, {
     credentials: "include",
