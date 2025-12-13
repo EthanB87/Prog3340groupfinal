@@ -11,7 +11,7 @@ export type Screen = "login" | "kanban" | "task-detail" | "admin";
 
 // Define your API base URL here for easy maintenance
 // Update this if your API runs on a different port/profile
-const API_BASE_URL = "http://localhost:7007";
+const API_BASE_URL = "https://localhost:7007";
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>("login");
@@ -135,7 +135,7 @@ export default function App() {
           )}
         </main>
       </div>
-      <ToastNotifications />
+      {/* <ToastNotifications /> */}
     </div>
   );
 }

@@ -41,10 +41,24 @@ namespace Prog3340GroupFinal.Controllers
             if (email == null)
                 return Unauthorized();
 
-            // Lookup user in database
+            // Lookup user in database; if missing, auto-provision a basic user
             var user = _db.AppUsers.FirstOrDefault(u => u.Email == email);
             if (user == null)
-                return NotFound();
+            {
+                var username = email.Split('@')[0];
+                user = new Models.AppUser
+                {
+                    Email = email,
+                    Username = username,
+                    PasswordHash = "external-login",
+                    Role = "User",
+                    CreatedAt = DateTime.UtcNow,
+                    ExternalProvider = "Google",
+                    ExternalId = email
+                };
+                _db.AppUsers.Add(user);
+                _db.SaveChanges();
+            }
 
             // Return user info
             return Ok(new
