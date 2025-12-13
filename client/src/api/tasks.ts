@@ -178,3 +178,37 @@ export const updateTaskStatus = async (
 
   return mapped;
 };
+
+export const updateTask = async (
+  apiBaseUrl: string,
+  id: string,
+  payload: {
+    title: string;
+    description?: string;
+    status: TaskStatus;
+    assignedToId?: number | null;
+  }
+): Promise<Task> => {
+  const response = await fetch(`${apiBaseUrl}/api/tasks/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      title: payload.title,
+      description: payload.description,
+      status: mapToApiStatus(payload.status),
+      assignedToId: payload.assignedToId ?? null,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to update task: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const body = await response.json();
+  return mapApiTask(body);
+};

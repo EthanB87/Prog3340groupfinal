@@ -61,7 +61,6 @@ export function LoginScreen({
     // Redirects the browser to the API's login challenge endpoint.
     // The API will handle the OAuth handshake and redirect back to 'returnUrl'.
     const loginUrl = `${apiBaseUrl}/api/Auth/login`;
-    const returnUrl = window.location.origin; // Redirect back to frontend root (localhost:3000)
 
     // Optionally, you can add a returnUrl query parameter
     // so the API redirects the user back to a specific page after successful auth.

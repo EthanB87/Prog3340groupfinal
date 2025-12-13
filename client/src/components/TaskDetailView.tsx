@@ -1,6 +1,18 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowUp, ArrowDown, Minus, AlertCircle, Calendar, User, Flag, MoreHorizontal, Paperclip, Link as LinkIcon } from 'lucide-react';
-import { fetchTaskById, updateTaskStatus } from '../api/tasks';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  AlertCircle,
+  Calendar,
+  User,
+  Flag,
+  Save,
+  X
+} from 'lucide-react';
+import { fetchTaskById, updateTask } from '../api/tasks';
+import { fetchUsers, UserSummary } from '../api/users';
 import { Task, TaskStatus } from '../types/task';
 
 interface TaskDetailViewProps {
@@ -11,9 +23,12 @@ interface TaskDetailViewProps {
 
 export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewProps) {
   const [task, setTask] = useState<Task | null>(null);
+  const [draft, setDraft] = useState<Task | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<UserSummary[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -25,8 +40,13 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchTaskById(apiBaseUrl, taskId);
+        const [data, userList] = await Promise.all([
+          fetchTaskById(apiBaseUrl, taskId),
+          fetchUsers(apiBaseUrl).catch(() => [] as UserSummary[])
+        ]);
         setTask(data);
+        setDraft(data);
+        setUsers(userList);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to load task');
       } finally {
@@ -37,32 +57,20 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
     load();
   }, [taskId, apiBaseUrl]);
 
-  if (isLoading) {
-    return (
-      <div className="h-full flex items-center justify-center text-gray-600">
-        Loading task...
-      </div>
-    );
-  }
+  const viewTask = (isEditing && draft) ? draft : task;
 
-  if (!task || error) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">{error ?? 'Task not found'}</p>
-          <button
-            onClick={onBack}
-            className="px-4 py-2 bg-[#0052cc] text-white rounded-lg hover:bg-[#0747a6]"
-          >
-            Back to Board
-          </button>
-        </div>
-      </div>
+  const assigneeOptions = useMemo(() => {
+    const base = [{ id: 0, label: 'Unassigned' }];
+    return base.concat(
+      users.map(u => ({
+        id: u.id,
+        label: u.username || u.email || `User ${u.id}`
+      }))
     );
-  }
+  }, [users]);
 
   const getPriorityIcon = () => {
-    switch (task.priority) {
+    switch (viewTask?.priority) {
       case 'highest':
         return <ArrowUp className="w-4 h-4 text-red-600" />;
       case 'high':
@@ -77,21 +85,12 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
   };
 
   const getPriorityLabel = () => {
-    return task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
-  };
-
-  const getStatusLabel = () => {
-    const labels: Record<string, string> = {
-      todo: 'To-Do',
-      development: 'Development',
-      review: 'Review',
-      merge: 'Merge',
-      done: 'Done'
-    };
-    return labels[task.status] || task.status;
+    if (!viewTask) return '';
+    return viewTask.priority.charAt(0).toUpperCase() + viewTask.priority.slice(1);
   };
 
   const getStatusColor = () => {
+    if (!viewTask) return 'bg-gray-100 text-gray-800';
     const colors: Record<string, string> = {
       todo: 'bg-gray-100 text-gray-800',
       development: 'bg-blue-100 text-blue-800',
@@ -99,23 +98,66 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
       merge: 'bg-purple-100 text-purple-800',
       done: 'bg-green-100 text-green-800'
     };
-    return colors[task.status] || 'bg-gray-100 text-gray-800';
+    return colors[viewTask.status] || 'bg-gray-100 text-gray-800';
   };
 
-  const handleStatusChange = async (status: TaskStatus) => {
-    if (!task) return;
+  const handleDraftChange = <K extends keyof Task>(key: K, value: Task[K]) => {
+    if (!draft) return;
+    setDraft({ ...draft, [key]: value });
+  };
+
+  const handleAssigneeChange = (value: string) => {
+    if (!draft) return;
+    const idNum = Number(value);
+    if (!idNum) {
+      setDraft({
+        ...draft,
+        assignee: { id: undefined, name: 'Unassigned', avatar: '', initials: 'UN' }
+      });
+      return;
+    }
+    const selected = users.find(u => u.id === idNum);
+    const name = selected?.username || selected?.email || `User ${idNum}`;
+    setDraft({
+      ...draft,
+      assignee: {
+        id: idNum,
+        name,
+        avatar: '',
+        initials: name.slice(0, 2).toUpperCase()
+      }
+    });
+  };
+
+  const handleSave = async () => {
+    if (!draft) return;
     try {
       setIsSaving(true);
-      const updated = await updateTaskStatus(apiBaseUrl, task.id, {
-        ...task,
-        status
+      const updated = await updateTask(apiBaseUrl, draft.id, {
+        title: draft.title,
+        description: draft.description,
+        status: draft.status,
+        assignedToId: draft.assignee?.id ?? null
       });
-      setTask(updated);
+      // Preserve front-end only fields (priority, due date)
+      const merged: Task = {
+        ...updated,
+        priority: draft.priority,
+        dueDate: draft.dueDate
+      };
+      setTask(merged);
+      setDraft(merged);
+      setIsEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to update status');
+      setError(err instanceof Error ? err.message : 'Unable to update task');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCancel = () => {
+    setDraft(task);
+    setIsEditing(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -136,6 +178,30 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
     return `${diffDays}d ago`;
   };
 
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-600">
+        Loading task...
+      </div>
+    );
+  }
+
+  if (!task || !viewTask || error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">{error ?? 'Task not found'}</p>
+          <button
+            onClick={onBack}
+            className="px-4 py-2 bg-[#0052cc] text-white rounded-lg hover:bg-[#0747a6]"
+          >
+            Back to Board
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full bg-gray-50">
       {/* Header */}
@@ -149,14 +215,44 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
           </button>
           <div className="flex-1">
             <div className="flex items-center gap-2 text-gray-500 mb-1">
-              <span>{task.id}</span>
-              <span>•</span>
-              <span>Created {formatDate(task.createdAt)}</span>
+              <span>{viewTask.id}</span>
+              <span>ƒ?›</span>
+              <span>Created {formatDate(viewTask.createdAt)}</span>
             </div>
           </div>
-          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
+          {!isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-3 py-2 bg-[#0052cc] text-white rounded-lg hover:bg-[#0747a6]"
+            >
+              Edit
+            </button>
+          )}
+          {isEditing && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg font-semibold shadow-md border border-green-700"
+                style={{
+                  backgroundColor: '#16a34a',
+                  color: '#ffffff',
+                  opacity: isSaving ? 0.6 : 1
+                }}
+              >
+                <Save className="w-4 h-4" />
+                Save
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 disabled:opacity-60"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -167,11 +263,19 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
           <div className="lg:col-span-2 space-y-6">
             {/* Task Title */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h1 className="text-gray-900 mb-4">{task.title}</h1>
+              {isEditing ? (
+                <input
+                  value={draft?.title ?? ''}
+                  onChange={(e) => handleDraftChange('title', e.target.value)}
+                  className="w-full text-gray-900 mb-4 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0052cc]"
+                />
+              ) : (
+                <h1 className="text-gray-900 mb-4">{viewTask.title}</h1>
+              )}
               
               {/* Labels */}
               <div className="flex flex-wrap gap-2">
-                {task.labels.map((label) => (
+                {viewTask.labels.map((label) => (
                   <span
                     key={label}
                     className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full"
@@ -185,25 +289,18 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
             {/* Description */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-gray-900 mb-3">Description</h3>
-              <p className="text-gray-700 leading-relaxed">
-                {task.description}
-              </p>
-            </div>
-
-            {/* Attachments */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-gray-900 mb-4">Attachments</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <Paperclip className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-700">requirements.pdf</span>
-                  <span className="text-gray-500 ml-auto">2.4 MB</span>
-                </div>
-                <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <LinkIcon className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-700">Design mockups</span>
-                </div>
-              </div>
+              {isEditing ? (
+                <textarea
+                  value={draft?.description ?? ''}
+                  onChange={(e) => handleDraftChange('description', e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0052cc] focus:border-transparent"
+                  rows={4}
+                />
+              ) : (
+                <p className="text-gray-700 leading-relaxed">
+                  {viewTask.description}
+                </p>
+              )}
             </div>
 
             {/* Activity Timeline */}
@@ -236,8 +333,8 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
 
               {/* Activity Items */}
               <div className="space-y-4">
-                {task.activity.length > 0 ? (
-                  task.activity.map((item) => (
+                {viewTask.activity.length > 0 ? (
+                  viewTask.activity.map((item) => (
                     <div key={item.id} className="flex gap-3">
                       <div className="w-8 h-8 bg-[#0052cc] text-white rounded-full flex items-center justify-center flex-shrink-0">
                         {item.user.initials}
@@ -268,18 +365,24 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
                 <Flag className="w-4 h-4" />
                 <span>Status</span>
               </div>
-              <select
-                value={task.status}
-                onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
-                disabled={isSaving}
-                className={`w-full px-3 py-2 rounded-lg ${getStatusColor()} ${isSaving ? 'opacity-60 cursor-wait' : ''}`}
-              >
-                <option value="todo">To-Do</option>
-                <option value="development">Development</option>
-                <option value="review">Review</option>
-                <option value="merge">Merge</option>
-                <option value="done">Done</option>
-              </select>
+              {isEditing ? (
+                <select
+                  value={draft?.status}
+                  onChange={(e) => handleDraftChange('status', e.target.value as TaskStatus)}
+                  disabled={isSaving}
+                  className={`w-full px-3 py-2 rounded-lg border ${isSaving ? 'opacity-60 cursor-wait' : ''}`}
+                >
+                  <option value="todo">To-Do</option>
+                  <option value="development">Development</option>
+                  <option value="review">Review</option>
+                  <option value="merge">Merge</option>
+                  <option value="done">Done</option>
+                </select>
+              ) : (
+                <div className={`w-full px-3 py-2 rounded-lg ${getStatusColor()}`}>
+                  {viewTask.status}
+                </div>
+              )}
             </div>
 
             {/* Priority */}
@@ -288,10 +391,23 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
                 {getPriorityIcon()}
                 <span>Priority</span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
-                {getPriorityIcon()}
-                <span className="text-gray-900">{getPriorityLabel()}</span>
-              </div>
+              {isEditing ? (
+                <select
+                  value={draft?.priority}
+                  onChange={(e) => handleDraftChange('priority', e.target.value as Task['priority'])}
+                  className="w-full px-3 py-2 rounded-lg border"
+                >
+                  <option value="highest">Highest</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
+                  {getPriorityIcon()}
+                  <span className="text-gray-900">{getPriorityLabel()}</span>
+                </div>
+              )}
             </div>
 
             {/* Assignee */}
@@ -300,12 +416,26 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
                 <User className="w-4 h-4" />
                 <span>Assignee</span>
               </div>
-              <div className="flex items-center gap-3 p-2">
-                <div className="w-8 h-8 bg-[#0052cc] text-white rounded-full flex items-center justify-center">
-                  {task.assignee.initials}
+              {isEditing ? (
+                <select
+                  value={draft?.assignee?.id ?? 0}
+                  onChange={(e) => handleAssigneeChange(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border"
+                >
+                  {assigneeOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex items-center gap-3 p-2">
+                  <div className="w-8 h-8 bg-[#0052cc] text-white rounded-full flex items-center justify-center">
+                    {viewTask.assignee.initials}
+                  </div>
+                  <span className="text-gray-900">{viewTask.assignee.name}</span>
                 </div>
-                <span className="text-gray-900">{task.assignee.name}</span>
-              </div>
+              )}
             </div>
 
             {/* Reporter */}
@@ -316,9 +446,9 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
               </div>
               <div className="flex items-center gap-3 p-2">
                 <div className="w-8 h-8 bg-gray-600 text-white rounded-full flex items-center justify-center">
-                  {task.reporter.initials}
+                  {viewTask.reporter.initials}
                 </div>
-                <span className="text-gray-900">{task.reporter.name}</span>
+                <span className="text-gray-900">{viewTask.reporter.name}</span>
               </div>
             </div>
 
@@ -331,15 +461,24 @@ export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewPro
               <div className="space-y-2">
                 <div>
                   <div className="text-gray-600 mb-1">Created</div>
-                  <div className="text-gray-900">{formatDate(task.createdAt)}</div>
+                  <div className="text-gray-900">{formatDate(viewTask.createdAt)}</div>
                 </div>
                 <div>
                   <div className="text-gray-600 mb-1">Updated</div>
-                  <div className="text-gray-900">{formatDate(task.updatedAt)}</div>
+                  <div className="text-gray-900">{formatDate(viewTask.updatedAt)}</div>
                 </div>
                 <div>
                   <div className="text-gray-600 mb-1">Due Date</div>
-                  <div className="text-gray-900">{formatDate(task.dueDate)}</div>
+                  {isEditing ? (
+                    <input
+                      type="date"
+                      value={draft?.dueDate?.slice(0, 10) ?? ''}
+                      onChange={(e) => handleDraftChange('dueDate', e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border"
+                    />
+                  ) : (
+                    <div className="text-gray-900">{formatDate(viewTask.dueDate)}</div>
+                  )}
                 </div>
               </div>
             </div>
