@@ -4,7 +4,6 @@ import { Mail, Lock, Loader2 } from "lucide-react";
 interface LoginScreenProps {
   onLogin: () => void;
   apiBaseUrl: string;
-  // Prop to save the token and trigger the post-login state change
   saveToken: (token: string) => void;
 }
 
@@ -34,7 +33,7 @@ export function LoginScreen({
     setLoading(true);
 
     try {
-      // Send credentials to the C# API
+      // Send credentials to the API
       const response = await fetch(`${apiBaseUrl}/api/Auth/login`, {
         method: "POST",
         headers: {
@@ -69,9 +68,7 @@ export function LoginScreen({
 
   // --- 2. GOOGLE (OIDC) LOGIN HANDLER (Cookie Flow) ---
   const handleGoogleLogin = () => {
-    // This is your backend endpoint that starts the Google OAuth flow
     const loginUrl = `${apiBaseUrl}/api/Auth/login`;
-    // Return URL after successful login
     const returnUrl = window.location.origin;
 
     // Redirect browser to backend login endpoint
@@ -147,23 +144,6 @@ export function LoginScreen({
               </div>
             </div>
 
-            {/* Remember Me / Forgot Password */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-[#0052cc] border-gray-300 rounded focus:ring-[#0052cc]"
-                />
-                <span className="ml-2 text-gray-700 text-sm">Remember me</span>
-              </label>
-              <a
-                href="#"
-                className="text-[#0052cc] hover:underline text-sm font-medium"
-              >
-                Forgot password?
-              </a>
-            </div>
-
             {/* Sign In Button (Dynamic Loading State) */}
             <button
               type="submit"
@@ -226,19 +206,6 @@ export function LoginScreen({
               Sign in with Google
             </button>
           </form>
-
-          {/* Register Link */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-600 text-sm">
-              Don't have an account?{" "}
-              <a
-                href="#"
-                className="text-[#0052cc] hover:underline font-medium"
-              >
-                Sign up
-              </a>
-            </p>
-          </div>
         </div>
 
         {/* Footer */}

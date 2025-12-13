@@ -1,5 +1,5 @@
-export type TaskStatus = 'todo' | 'development' | 'review' | 'merge' | 'done';
-export type TaskPriority = 'highest' | 'high' | 'medium' | 'low';
+export type TaskStatus = "todo" | "development" | "review" | "merge" | "done";
+export type TaskPriority = "highest" | "high" | "medium" | "low";
 
 export interface Task {
   id: string;
@@ -29,7 +29,7 @@ export interface Task {
 
 export interface ActivityItem {
   id: string;
-  type: 'comment' | 'status' | 'assignment' | 'update';
+  type: "comment" | "status" | "assignment" | "update";
   user: {
     name: string;
     avatar: string;

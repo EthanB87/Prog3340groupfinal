@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Prog3340GroupFinal.Data;
-// Assuming you have an AppUser model here
 using Prog3340GroupFinal.Models;
 using Prog3340GroupFinal.Repositories;
 using Prog3340GroupFinal.Services;
@@ -138,18 +137,6 @@ namespace Prog3340GroupFinal.Controllers
                 _db.SaveChanges();
             }
 
-//                 user = new AppUser
-//                 {
-//                     Email = email,
-//                     Username = email.Split('@')[0],
-//                     Role = "User",
-//                     CreatedAt = DateTime.UtcNow,
-//                     PasswordHash = ""
-//                 };
-
-//                 _db.AppUsers.Add(user);
-//                 _db.SaveChangesAsync();
-//             }
             // Return user info
             return Ok(new
             {

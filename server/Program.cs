@@ -1,16 +1,16 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.AspNetCore.Authentication.JwtBearer; // New using statement
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
-using Microsoft.IdentityModel.Tokens; // New using statement
+using Microsoft.IdentityModel.Tokens;
 using Prog3340GroupFinal.Data;
 using Prog3340GroupFinal.Hubs;
 using Prog3340GroupFinal.Repositories;
 using Prog3340GroupFinal.Services;
-using Prog3340GroupFinal.Services; // New using statement
-using System.Text; // New using statement
+using System.Text;
+using System.Text.Json.Serialization; 
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -114,10 +114,22 @@ builder.Services.AddAuthentication(options =>
     options.Scope.Add("openid");
     options.Scope.Add("profile");
     options.Scope.Add("email");
+
+    //options.Events = new Microsoft.AspNetCore.Authentication.OpenIdConnect.OpenIdConnectEvents
+    //{
+    //    OnRedirectToIdentityProvider = context =>
+    //    {
+    //        if (context.Request.Path.StartsWithSegments("/api"))
+    //        {
+    //            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+    //            context.HandleResponse();
+    //        }
+    //        return Task.CompletedTask;
+    //    }
+    //};
 })
-.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options => // Added JWT Bearer Scheme
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
-    // Configuration for validating JWTs received from other services (optional for this API)
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -132,25 +144,30 @@ builder.Services.AddAuthentication(options =>
 // --- END: Authentication Configuration Update ---
 
 // --- START: Service Registration ---
-// 1. Register your custom JWT service for creating tokens
 builder.Services.AddScoped<JwtService>();
 
 // 2. Register the ApiClient and configure its HttpClient
 builder.Services.AddHttpClient<ApiClient>(client =>
 {
-    // Set the base address for the API client to call (e.g., another microservice)
-    // NOTE: Update this URL to the actual internal API you intend to call.
     client.BaseAddress = new Uri(builder.Configuration["InternalApi:BaseAddress"] ?? "http://localhost:5000/");
 });
 // --- END: Service Registration ---
 
 
 builder.Services.AddAuthorization();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddHostedService<TaskCleanupService>();
 
 var app = builder.Build();
@@ -159,14 +176,6 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
-    var repo = scope.ServiceProvider.GetRequiredService<IPasswordRepository>();
-    Console.WriteLine("--- COPY THESE HASHES ---");
-    Console.WriteLine($"admin: {repo.HashPassword("admin")}");
-    Console.WriteLine($"user1: {repo.HashPassword("user1")}");
-    Console.WriteLine($"user2: {repo.HashPassword("user2")}");
-    Console.WriteLine($"user3: {repo.HashPassword("user3")}");
-    Console.WriteLine($"user4: {repo.HashPassword("user4")}");
-    Console.WriteLine("-------------------------");
 }
 
 if (app.Environment.IsDevelopment())
