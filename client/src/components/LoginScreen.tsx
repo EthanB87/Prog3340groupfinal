@@ -40,6 +40,7 @@ export function LoginScreen({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
@@ -57,6 +58,7 @@ export function LoginScreen({
       // This will automatically transition the user to the Kanban screen
       const jwtToken = data.token;
       saveToken(jwtToken);
+      onLogin();
     } catch (err: any) {
       console.error("Local Login Error:", err.message);
       setError(err.message);

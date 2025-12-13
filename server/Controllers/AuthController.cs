@@ -47,6 +47,7 @@ namespace Prog3340GroupFinal.Controllers
 
         // POST /api/auth/register: User registration
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
@@ -81,6 +82,7 @@ namespace Prog3340GroupFinal.Controllers
 
         // POST /api/auth/login: Login with username/password (Local Authentication)
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
@@ -174,6 +176,7 @@ namespace Prog3340GroupFinal.Controllers
 
         // GET /api/auth/login: Initiates Google OAuth Challenge (OIDC)
         [HttpGet("login")]
+        [AllowAnonymous]
         public IActionResult LoginOidc([FromQuery] string returnUrl = "/")
         {
             var props = new AuthenticationProperties
@@ -196,6 +199,7 @@ namespace Prog3340GroupFinal.Controllers
 
         [HttpGet("logout")]
         [HttpPost("logout")]
+        [AllowAnonymous]
         public IActionResult Logout([FromQuery] string? returnUrl = null)
         {
             var defaultRedirect = _config["Api:BaseAddress"] ?? "http://localhost:5173";
@@ -210,6 +214,7 @@ namespace Prog3340GroupFinal.Controllers
         }
 
         [HttpGet("denied")]
+        [AllowAnonymous]
         public IActionResult AccessDenied()
         {
             return Forbid();
@@ -228,8 +233,16 @@ namespace Prog3340GroupFinal.Controllers
                 new(ClaimTypes.Role, user.Role)
             };
 
-            var claimsIdentity = new ClaimsIdentity(claims, JwtBearerDefaults.AuthenticationScheme);
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+
+            var authProps = new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
+            };
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal, authProps);
 
             var token = _jwtService.GenerateToken(claimsPrincipal);
 
