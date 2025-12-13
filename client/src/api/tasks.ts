@@ -115,23 +115,25 @@ export const fetchTasks = async (apiBaseUrl: string): Promise<Task[]> => {
   return (list as any[]).map(mapApiTask);
 };
 
-export const fetchTaskById = async (
+export async function fetchTaskById(
   apiBaseUrl: string,
-  id: string
-): Promise<Task> => {
-  const response = await fetch(`${apiBaseUrl}/api/tasks/${id}`, {
+  taskId: string
+): Promise<{ task: Task; cacheStatus: 'HIT' | 'MISS' }> {
+  const response = await fetch(`${apiBaseUrl}/api/tasks/${taskId}`, {
     credentials: "include",
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to load task ${id}: ${response.status} ${response.statusText}`
-    );
+    throw new Error('Failed to fetch task');
   }
 
-  const payload = await response.json();
-  return mapApiTask(payload);
-};
+  const header = response.headers.get('X-Cache')?.toUpperCase().trim();
+  const cacheStatus = header === 'HIT' ? 'HIT' : 'MISS';
+
+  const task = await response.json();
+
+  return { task, cacheStatus };
+}
 
 export const updateTaskStatus = async (
   apiBaseUrl: string,
