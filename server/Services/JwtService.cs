@@ -29,7 +29,7 @@ namespace Prog3340GroupFinal.Services
             {
                 claims.Add(new Claim(ClaimTypes.Role, role)); 
             } 
-            var token = new JwtSecurityToken(issuer: issuer, audience: audience, claims: claims, notBefore: now, expires: now.Add(lifetime ?? TimeSpan.FromHours(1)), signingCredentials: creds);
+            var token = new JwtSecurityToken(issuer: issuer, audience: audience, claims: claims, notBefore: now, expires: now.Add(lifetime ?? TimeSpan.FromDays(7)), signingCredentials: creds);
             return new JwtSecurityTokenHandler().WriteToken(token); }
     }
 }

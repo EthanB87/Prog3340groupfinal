@@ -1,7 +1,7 @@
-import { Plus } from 'lucide-react';
-import { TaskCard } from './TaskCard';
-import { mockTasks } from '../data/mockTasks';
-import { TaskStatus } from '../types/task';
+import { Plus } from "lucide-react";
+import { TaskCard } from "./TaskCard";
+import { mockTasks } from "../data/mockTasks";
+import { TaskStatus } from "../types/task";
 
 interface KanbanBoardProps {
   onTaskClick: (taskId: string) => void;
@@ -14,16 +14,16 @@ interface Column {
 }
 
 const columns: Column[] = [
-  { id: 'todo', title: 'To-Do', color: '#dfe1e6' },
-  { id: 'development', title: 'Development', color: '#deebff' },
-  { id: 'review', title: 'Review', color: '#fff0b3' },
-  { id: 'merge', title: 'Merge', color: '#eae6ff' },
-  { id: 'done', title: 'Done', color: '#e3fcef' }
+  { id: "todo", title: "To-Do", color: "#dfe1e6" },
+  { id: "development", title: "Development", color: "#deebff" },
+  { id: "review", title: "Review", color: "#fff0b3" },
+  { id: "merge", title: "Merge", color: "#eae6ff" },
+  { id: "done", title: "Done", color: "#e3fcef" },
 ];
 
 export function KanbanBoard({ onTaskClick }: KanbanBoardProps) {
   const getTasksByStatus = (status: TaskStatus) => {
-    return mockTasks.filter(task => task.status === status && !task.archived);
+    return mockTasks.filter((task) => task.status === status && !task.archived);
   };
 
   return (

@@ -6,6 +6,7 @@ import { AdminDashboard } from "./components/AdminDashboard";
 import { ToastNotifications } from "./components/ToastNotifications";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
+import { saveTokenToStorage, authFetch } from "./utils/auth";
 
 export type Screen = "login" | "kanban" | "task-detail" | "admin";
 
@@ -15,7 +16,7 @@ const API_BASE_URL = "https://localhost:7007";
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>("login");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // New state to handle loading
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // --- 1. Effect to Check Authentication Status on Load ---
@@ -24,7 +25,7 @@ export default function App() {
       try {
         // Call the C# API's "me" endpoint.
         // The API relies on the presence of the authentication cookie.
-        const response = await fetch(`${API_BASE_URL}/api/Auth/me`);
+        const response = await authFetch(`${API_BASE_URL}/api/Auth/me`);
 
         if (response.ok) {
           // User is authenticated, retrieve user data if needed
@@ -33,11 +34,13 @@ export default function App() {
           setCurrentScreen("kanban");
         } else {
           // User is not authenticated (status 401 Unauthorized or 404 Not Found)
+          localStorage.removeItem("authToken");
           setIsLoggedIn(false);
           setCurrentScreen("login");
         }
       } catch (error) {
         console.error("Error checking authentication status:", error);
+        localStorage.removeItem("authToken");
         setIsLoggedIn(false);
         setCurrentScreen("login");
       } finally {
@@ -49,16 +52,18 @@ export default function App() {
   }, []); // Run only once on component mount
 
   const handleLogin = () => {
-    // This function will primarily handle local state change
-    // after the OIDC flow redirects back to the app root.
     setIsLoggedIn(true);
     setCurrentScreen("kanban");
   };
 
+  const handleSaveToken = (token: string) => {
+    saveTokenToStorage(token);
+    handleLogin();
+  };
+
   // --- 2. Updated Logout Handler to Call API ---
   const handleLogout = async () => {
-    // The API needs to clear the authentication cookie.
-    // We redirect the API back to the current frontend address.
+    localStorage.removeItem("authToken");
     const redirectUrl = window.location.origin;
 
     try {
@@ -74,7 +79,6 @@ export default function App() {
       setCurrentScreen("login");
     } catch (error) {
       console.error("Error during logout:", error);
-      // Fallback for failed network call
       setIsLoggedIn(false);
       setCurrentScreen("login");
     }
@@ -106,6 +110,7 @@ export default function App() {
         <LoginScreen
           onLogin={handleLogin}
           apiBaseUrl={API_BASE_URL} // Use the defined constant
+          saveToken={handleSaveToken}
         />
         <ToastNotifications />
       </>
