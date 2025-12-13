@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens; // New using statement
 using Prog3340GroupFinal.Data;
 using Prog3340GroupFinal.Hubs;
 using Prog3340GroupFinal.Repositories;
+using Prog3340GroupFinal.Services;
 using Prog3340GroupFinal.Services; // New using statement
 using System.Text; // New using statement
 
@@ -116,6 +117,8 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<TaskCleanupService>();
 
 var app = builder.Build();
 
