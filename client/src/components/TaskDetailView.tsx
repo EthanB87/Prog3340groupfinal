@@ -444,7 +444,7 @@ export function TaskDetailView({
               </div>
               {isEditing ? (
                 <select
-                  value={draft?.status}
+                  value={draft?.status ?? viewTask.status}
                   onChange={(e) =>
                     handleDraftChange("status", e.target.value as TaskStatus)
                   }
