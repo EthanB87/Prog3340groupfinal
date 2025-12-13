@@ -121,7 +121,7 @@ export default function App() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar currentScreen={currentScreen} onNavigate={setCurrentScreen} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={handleLogout} />
+        <Header onLogout={handleLogout} user={null} />
         <main className="flex-1 overflow-auto">
           {currentScreen === "kanban" && (
             <KanbanBoard
@@ -141,7 +141,7 @@ export default function App() {
           )}
         </main>
       </div>
-      {/* <ToastNotifications /> */}
+      <ToastNotifications />
     </div>
   );
 }

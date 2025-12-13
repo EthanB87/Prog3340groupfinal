@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Plus, RefreshCcw, X } from 'lucide-react';
-import { TaskCard } from './TaskCard';
-import { Task, TaskStatus } from '../types/task';
-import { createTask, fetchTasks, updateTaskStatus } from '../api/tasks';
+import { useEffect, useState } from "react";
+import { Plus, RefreshCcw, X } from "lucide-react";
+import { TaskCard } from "./TaskCard";
+import { Task, TaskStatus } from "../types/task";
+import { createTask, fetchTasks, updateTaskStatus } from "../api/tasks";
+import { HubConnectionBuilder } from "@microsoft/signalr";
 
 interface KanbanBoardProps {
   apiBaseUrl: string;
@@ -29,8 +30,8 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
   const [error, setError] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [createStatus, setCreateStatus] = useState<TaskStatus | null>(null);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -41,7 +42,7 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
       const data = await fetchTasks(apiBaseUrl);
       setTasks(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tasks');
+      setError(err instanceof Error ? err.message : "Failed to load tasks");
     } finally {
       setIsLoading(false);
     }
@@ -49,17 +50,52 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
 
   useEffect(() => {
     loadTasks();
-  }, []);
+
+    // Create Connection
+    const connection = new HubConnectionBuilder()
+      .withUrl(`${apiBaseUrl}/notificationHub`)
+      .withAutomaticReconnect()
+      .build();
+
+    // Start Connection
+    connection
+      .start()
+      .then(() => console.log("Kanban Board Connected to SignalR"))
+      .catch((err) => console.error("SignalR Connection Error:", err));
+
+    // Listen for "Task Created" -> Add to board
+    connection.on("Task Created", (newTask: Task) => {
+      setTasks((current) => [...current, newTask]);
+    });
+
+    // Listen for "Task Updated" -> Update specific card
+    connection.on("Task Updated", (updatedTask: Task) => {
+      setTasks((current) =>
+        current.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+      );
+    });
+
+    // Listen for "Task Deleted" -> Remove from board
+    connection.on("Task Deleted", (taskId: number) => {
+      // Ensure type matching (string vs number) based on your ID type
+      setTasks((current) => current.filter((t) => t.id !== taskId.toString()));
+    });
+
+    // Cleanup when component unmounts (leave the page)
+    return () => {
+      connection.stop();
+    };
+  }, [apiBaseUrl]);
 
   const getTasksByStatus = (status: TaskStatus) =>
-    tasks.filter(task => task.status === status && !task.archived);
+    tasks.filter((task) => task.status === status && !task.archived);
 
   const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
     const previous = tasks;
-    const existing = tasks.find(t => t.id === taskId);
+    const existing = tasks.find((t) => t.id === taskId);
     if (!existing || existing.status === newStatus) return;
 
-    const optimistic = tasks.map(t =>
+    const optimistic = tasks.map((t) =>
       t.id === taskId ? { ...t, status: newStatus } : t
     );
     setTasks(optimistic);
@@ -68,14 +104,14 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
     try {
       const updated = await updateTaskStatus(apiBaseUrl, taskId, {
         ...existing,
-        status: newStatus
+        status: newStatus,
       });
       setTasks((current) =>
-        current.map(t => (t.id === taskId ? updated : t))
+        current.map((t) => (t.id === taskId ? updated : t))
       );
     } catch (err) {
       setTasks(previous);
-      setError(err instanceof Error ? err.message : 'Failed to update task');
+      setError(err instanceof Error ? err.message : "Failed to update task");
     }
   };
 
@@ -103,7 +139,9 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
             Refresh
           </button>
           {error && <span className="text-red-600 text-sm">{error}</span>}
-          {createError && <span className="text-red-600 text-sm">{createError}</span>}
+          {createError && (
+            <span className="text-red-600 text-sm">{createError}</span>
+          )}
         </div>
       </div>
 
@@ -166,7 +204,7 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
                         <button
                           onClick={async () => {
                             if (!newTitle.trim()) {
-                              setCreateError('Title is required');
+                              setCreateError("Title is required");
                               return;
                             }
                             try {
@@ -178,11 +216,15 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
                                 status: column.id,
                               });
                               setTasks((prev) => [created, ...prev]);
-                              setNewTitle('');
-                              setNewDescription('');
+                              setNewTitle("");
+                              setNewDescription("");
                               setCreateStatus(null);
                             } catch (err) {
-                              setCreateError(err instanceof Error ? err.message : 'Failed to create task');
+                              setCreateError(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Failed to create task"
+                              );
                             } finally {
                               setIsCreating(false);
                             }
@@ -190,13 +232,13 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
                           disabled={isCreating}
                           className="px-3 py-2 bg-[#0052cc] text-white rounded hover:bg-[#0747a6] disabled:opacity-60"
                         >
-                          {isCreating ? 'Saving...' : 'Save'}
+                          {isCreating ? "Saving..." : "Save"}
                         </button>
                         <button
                           onClick={() => {
                             setCreateStatus(null);
-                            setNewTitle('');
-                            setNewDescription('');
+                            setNewTitle("");
+                            setNewDescription("");
                             setCreateError(null);
                           }}
                           className="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg inline-flex items-center gap-1"
@@ -209,8 +251,8 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
                     <button
                       onClick={() => {
                         setCreateStatus(column.id);
-                        setNewTitle('');
-                        setNewDescription('');
+                        setNewTitle("");
+                        setNewDescription("");
                         setCreateError(null);
                       }}
                       className="w-full flex items-center gap-2 p-3 text-gray-600 hover:bg-white hover:bg-opacity-50 rounded-lg transition-colors"

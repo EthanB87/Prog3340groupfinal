@@ -27,12 +27,24 @@ const ensureDefaults = (t: Task): Task => ({
   dueDate: t.dueDate || new Date().toISOString(),
   labels: t.labels ?? [],
   activity: t.activity ?? [],
-  assignee: t.assignee ?? { id: 0, name: "Unassigned", avatar: "", initials: "UN" },
-  reporter: t.reporter ?? { id: 0, name: "Reporter", avatar: "", initials: "RP" },
+  assignee: t.assignee ?? {
+    id: 0,
+    name: "Unassigned",
+    avatar: "",
+    initials: "UN",
+  },
+  reporter: t.reporter ?? {
+    id: 0,
+    name: "Reporter",
+    avatar: "",
+    initials: "RP",
+  },
 });
 
 type TaskResponse = Task | { task: Task; cacheStatus?: "HIT" | "MISS" };
-const isWrappedTask = (value: TaskResponse): value is { task: Task; cacheStatus?: "HIT" | "MISS" } =>
+const isWrappedTask = (
+  value: TaskResponse
+): value is { task: Task; cacheStatus?: "HIT" | "MISS" } =>
   typeof (value as any)?.task !== "undefined";
 
 export function TaskDetailView({
@@ -53,6 +65,7 @@ export function TaskDetailView({
     const load = async () => {
       if (!taskId) {
         setError("No task selected");
+        setError("No task selected");
         setIsLoading(false);
         return;
       }
@@ -69,13 +82,16 @@ export function TaskDetailView({
         const normalized = ensureDefaults(
           isWrappedTask(payload) ? payload.task : payload
         );
-        const cache = isWrappedTask(payload) ? payload.cacheStatus ?? null : null;
+        const cache = isWrappedTask(payload)
+          ? payload.cacheStatus ?? null
+          : null;
 
         setTask(normalized);
         setDraft(normalized);
         setUsers(userList);
         setCacheStatus(cache);
       } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to load task");
         setError(err instanceof Error ? err.message : "Unable to load task");
       } finally {
         setIsLoading(false);
@@ -102,9 +118,12 @@ export function TaskDetailView({
       case "highest":
         return <ArrowUp className="w-4 h-4 text-red-600" />;
       case "high":
+      case "high":
         return <ArrowUp className="w-4 h-4 text-orange-600" />;
       case "medium":
+      case "medium":
         return <Minus className="w-4 h-4 text-yellow-600" />;
+      case "low":
       case "low":
         return <ArrowDown className="w-4 h-4 text-green-600" />;
       default:
@@ -207,6 +226,11 @@ export function TaskDetailView({
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -383,6 +407,12 @@ export function TaskDetailView({
                           <span className="text-gray-500">
                             {formatTimestamp(item.timestamp)}
                           </span>
+                          <span className="text-gray-900">
+                            {item.user.name}
+                          </span>
+                          <span className="text-gray-500">
+                            {formatTimestamp(item.timestamp)}
+                          </span>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <p className="text-gray-700">{item.content}</p>
@@ -391,9 +421,14 @@ export function TaskDetailView({
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-center py-4">
-                    No activity yet
-                  </p>
+                  <>
+                    <p className="text-gray-500 text-center py-4">
+                      No activity yet
+                    </p>
+                    <p className="text-gray-500 text-center py-4">
+                      No activity yet
+                    </p>
+                  </>
                 )}
               </div>
             </div>
