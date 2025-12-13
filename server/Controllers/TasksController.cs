@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Prog3340GroupFinal.Data;
+using Prog3340GroupFinal.Hubs;
 using Prog3340GroupFinal.Models;
 using Prog3340GroupFinal.Repositories;
 using System.Security.Claims;
@@ -15,13 +17,15 @@ namespace Prog3340GroupFinal.Controllers
 		private readonly ITaskRepository _taskRepository;
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IUserRepository _userRepository;
+		private readonly IHubContext<NotificationHub> _hubContext;
 		private readonly ILogger<TasksController> _logger;
 
-		public TasksController(ITaskRepository taskRepository, IUnitOfWork unitOfWork, IUserRepository userRepository, ILogger<TasksController> logger)
+		public TasksController(ITaskRepository taskRepository, IUnitOfWork unitOfWork, IUserRepository userRepository, IHubContext<NotificationHub> context, ILogger<TasksController> logger)
 		{
 			_taskRepository = taskRepository;
 			_unitOfWork = unitOfWork;
 			_userRepository = userRepository;
+			_hubContext = context;
 			_logger = logger;
 		}
 
@@ -79,6 +83,7 @@ namespace Prog3340GroupFinal.Controllers
 			};
 
 			await _taskRepository.AddAsync(entity);
+			await _hubContext.Clients.All.SendAsync("Task Created", entity);
 
 			return CreatedAtAction(nameof(GetTask), new { id = entity.Id }, entity);
 		}
@@ -100,6 +105,7 @@ namespace Prog3340GroupFinal.Controllers
 			task.UpdatedAt = DateTime.UtcNow;
 
 			await _taskRepository.UpdateAsync(task);
+			await _hubContext.Clients.All.SendAsync("Task Updated", task);
 			return Ok(task);
 		}
 
@@ -114,6 +120,7 @@ namespace Prog3340GroupFinal.Controllers
 			}
 
 			await _taskRepository.DeleteAsync(task);
+			await _hubContext.Clients.All.SendAsync("Task Deleted", id);
 			return NoContent();
 		}
 

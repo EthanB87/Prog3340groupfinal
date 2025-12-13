@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Prog3340GroupFinal.Data;
+using Prog3340GroupFinal.Hubs;
 using Prog3340GroupFinal.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -95,5 +96,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/notificationhub");
 
 app.Run();
