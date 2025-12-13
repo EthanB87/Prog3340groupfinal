@@ -247,3 +247,17 @@ export const updateTask = async (
   const body = await response.json();
   return mapApiTask(body);
 };
+
+export async function deleteTask(
+  apiBaseUrl: string,
+  taskId: string
+): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}/api/tasks/${taskId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete task");
+  }
+}

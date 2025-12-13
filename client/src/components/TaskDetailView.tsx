@@ -11,7 +11,7 @@ import {
   Save,
   X,
 } from "lucide-react";
-import { fetchTaskById, updateTask } from "../api/tasks";
+import { fetchTaskById, updateTask, deleteTask } from "../api/tasks";
 import { fetchUsers, UserSummary } from "../api/users";
 import { Task, TaskStatus } from "../types/task";
 
@@ -224,6 +224,26 @@ export function TaskDetailView({
     setIsEditing(false);
   };
 
+  const handleDelete = async () => {
+    if (!task) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this task? This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsSaving(true);
+      await deleteTask(apiBaseUrl, task.id);
+      onBack(); // return to board
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete task");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -287,8 +307,7 @@ export function TaskDetailView({
           </button>
           <div className="flex-1">
             <div className="flex items-center gap-2 text-gray-500 mb-1">
-              <span>{viewTask.id}</span>
-              <span>ƒ?›</span>
+              <span>{viewTask.id} - </span>
               <span>Created {formatDate(viewTask.createdAt)}</span>
             </div>
           </div>
@@ -315,6 +334,7 @@ export function TaskDetailView({
                 <Save className="w-4 h-4" />
                 Save
               </button>
+
               <button
                 onClick={handleCancel}
                 disabled={isSaving}
@@ -322,6 +342,20 @@ export function TaskDetailView({
               >
                 <X className="w-4 h-4" />
                 Cancel
+              </button>
+
+              <button
+                onClick={handleDelete}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg font-semibold shadow-md border border-green-700"
+                style={{
+                  backgroundColor: "#a32416ff",
+                  color: "#ffffff",
+                  opacity: isSaving ? 0.6 : 1,
+                }}
+              >
+                <Save className="w-4 h-4" />
+                Delete
               </button>
             </div>
           )}
