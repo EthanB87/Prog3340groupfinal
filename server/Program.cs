@@ -1,25 +1,46 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authentication.JwtBearer; // New using statement
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens; // New using statement
 using Prog3340GroupFinal.Data;
 using Prog3340GroupFinal.Hubs;
 using Prog3340GroupFinal.Repositories;
+using Prog3340GroupFinal.Services;
+using Prog3340GroupFinal.Services; // New using statement
+using System.Text; // New using statement
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- START: JWT Configuration Setup ---
+var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key not found.");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+// --- END: JWT Configuration Setup ---
+
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseInMemoryDatabase("TaskDb"));
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordRepository, PasswordRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<ITaskCacheService, TaskCacheService>();
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
+
+builder.Services.AddMemoryCache();
+builder.Services.Configure<TaskCacheOptions>(options =>
+{
+    options.TaskTtlMinutes = 5;
+});
 
 
 // Add services to the container.
@@ -37,6 +58,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+// --- START: Authentication Configuration Update ---
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -66,13 +88,44 @@ builder.Services.AddAuthentication(options =>
     options.Scope.Add("openid");
     options.Scope.Add("profile");
     options.Scope.Add("email");
+})
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options => // Added JWT Bearer Scheme
+{
+    // Configuration for validating JWTs received from other services (optional for this API)
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = signingKey
+    };
 });
+// --- END: Authentication Configuration Update ---
+
+// --- START: Service Registration ---
+// 1. Register your custom JWT service for creating tokens
+builder.Services.AddScoped<JwtService>();
+
+// 2. Register the ApiClient and configure its HttpClient
+builder.Services.AddHttpClient<ApiClient>(client =>
+{
+    // Set the base address for the API client to call (e.g., another microservice)
+    // NOTE: Update this URL to the actual internal API you intend to call.
+    client.BaseAddress = new Uri(builder.Configuration["InternalApi:BaseAddress"] ?? "http://localhost:5000/");
+});
+// --- END: Service Registration ---
+
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<TaskCleanupService>();
 
 var app = builder.Build();
 
@@ -80,6 +133,14 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    var repo = scope.ServiceProvider.GetRequiredService<IPasswordRepository>();
+    Console.WriteLine("--- COPY THESE HASHES ---");
+    Console.WriteLine($"admin: {repo.HashPassword("admin")}");
+    Console.WriteLine($"user1: {repo.HashPassword("user1")}");
+    Console.WriteLine($"user2: {repo.HashPassword("user2")}");
+    Console.WriteLine($"user3: {repo.HashPassword("user3")}");
+    Console.WriteLine($"user4: {repo.HashPassword("user4")}");
+    Console.WriteLine("-------------------------");
 }
 
 if (app.Environment.IsDevelopment())

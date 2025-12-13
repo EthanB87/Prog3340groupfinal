@@ -16,11 +16,11 @@ interface Column {
 }
 
 const columns: Column[] = [
-  { id: 'todo', title: 'To-Do', color: '#dfe1e6' },
-  { id: 'development', title: 'Development', color: '#deebff' },
-  { id: 'review', title: 'Review', color: '#fff0b3' },
-  { id: 'merge', title: 'Merge', color: '#eae6ff' },
-  { id: 'done', title: 'Done', color: '#e3fcef' }
+  { id: "todo", title: "To-Do", color: "#dfe1e6" },
+  { id: "development", title: "Development", color: "#deebff" },
+  { id: "review", title: "Review", color: "#fff0b3" },
+  { id: "merge", title: "Merge", color: "#eae6ff" },
+  { id: "done", title: "Done", color: "#e3fcef" },
 ];
 
 export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {

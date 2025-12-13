@@ -8,18 +8,18 @@ namespace Prog3340GroupFinal.Controllers
 	[ApiController]
 	public class UsersController : ControllerBase
 	{
-		private readonly IUserRepository _userRepository;
+		private readonly IUnitOfWork _unitOfWork;
 
-		public UsersController(IUserRepository userRepository)
+		public UsersController(IUnitOfWork unitOfWork)
 		{
-			_userRepository = userRepository;
+			_unitOfWork = unitOfWork;
 		}
 
 		[HttpGet]
 		[Authorize]
 		public async Task<IActionResult> GetAllUsers()
 		{
-			var users = await _userRepository.GetAllAsync();
+			var users = await _unitOfWork.Users.GetAllAsync();
 
 			return Ok(users.Select(u => new
 			{
@@ -35,7 +35,7 @@ namespace Prog3340GroupFinal.Controllers
 		[Authorize]
 		public async Task<IActionResult> GetUserById([FromRoute] int id)
 		{
-			var user = await _userRepository.GetByIdAsync(id);
+			var user = await _unitOfWork.Users.GetByIdAsync(id);
 
 			if (user == null)
 			{
