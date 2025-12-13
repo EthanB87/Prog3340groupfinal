@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, RefreshCcw } from 'lucide-react';
 import { TaskCard } from './TaskCard';
 import { Task, TaskStatus } from '../types/task';
-import { fetchTasks } from '../api/tasks';
+import { fetchTasks, updateTaskStatus } from '../api/tasks';
 
 interface KanbanBoardProps {
   apiBaseUrl: string;
@@ -27,6 +27,7 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const loadTasks = async () => {
     try {
@@ -47,6 +48,38 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
 
   const getTasksByStatus = (status: TaskStatus) =>
     tasks.filter(task => task.status === status && !task.archived);
+
+  const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
+    const previous = tasks;
+    const existing = tasks.find(t => t.id === taskId);
+    if (!existing || existing.status === newStatus) return;
+
+    const optimistic = tasks.map(t =>
+      t.id === taskId ? { ...t, status: newStatus } : t
+    );
+    setTasks(optimistic);
+    setError(null);
+
+    try {
+      const updated = await updateTaskStatus(apiBaseUrl, taskId, {
+        ...existing,
+        status: newStatus
+      });
+      setTasks((current) =>
+        current.map(t => (t.id === taskId ? updated : t))
+      );
+    } catch (err) {
+      setTasks(previous);
+      setError(err instanceof Error ? err.message : 'Failed to update task');
+    }
+  };
+
+  const handleDrop = (status: TaskStatus) => {
+    if (draggingId) {
+      handleMoveTask(draggingId, status);
+      setDraggingId(null);
+    }
+  };
 
   return (
     <div className="h-full p-6">
@@ -81,6 +114,8 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
                 key={column.id}
                 className="flex-shrink-0 w-80 flex flex-col"
                 style={{ backgroundColor: column.color }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop(column.id)}
               >
                 {/* Column Header */}
                 <div className="p-4 border-b border-gray-300">
@@ -99,6 +134,9 @@ export function KanbanBoard({ apiBaseUrl, onTaskClick }: KanbanBoardProps) {
                       key={task.id}
                       task={task}
                       onClick={() => onTaskClick(task.id)}
+                      draggable
+                      onDragStart={() => setDraggingId(task.id)}
+                      onDragEnd={() => setDraggingId(null)}
                     />
                   ))}
 

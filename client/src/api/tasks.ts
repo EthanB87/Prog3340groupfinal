@@ -159,5 +159,22 @@ export const updateTaskStatus = async (
   }
 
   const payload = await response.json();
-  return mapApiTask(payload);
+  const mapped = mapApiTask(payload);
+
+  // If the API does not return navigation data, preserve the known assignee info
+  if (
+    mapped.assignee &&
+    mapped.assignee.id === (task.assignee?.id ?? mapped.assignee.id) &&
+    mapped.assignee.name === "Unassigned" &&
+    task.assignee?.name
+  ) {
+    mapped.assignee = {
+      ...mapped.assignee,
+      name: task.assignee.name,
+      initials: task.assignee.initials,
+      avatar: task.assignee.avatar,
+    };
+  }
+
+  return mapped;
 };
