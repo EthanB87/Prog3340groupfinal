@@ -1,19 +1,46 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Filter, Download, ArrowUp, ArrowDown, Minus, Archive } from 'lucide-react';
-import { mockTasks } from '../data/mockTasks';
 import { Task, TaskStatus } from '../types/task';
+import { fetchTasks } from '../api/tasks';
 
-export function AdminDashboard() {
+interface AdminDashboardProps {
+  apiBaseUrl: string;
+}
+
+export function AdminDashboard({ apiBaseUrl }: AdminDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [showArchived, setShowArchived] = useState(true);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchTasks(apiBaseUrl);
+        setTasks(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load tasks');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    load();
+  }, [apiBaseUrl]);
 
   // Get unique assignees
-  const assignees = Array.from(new Set(mockTasks.map(t => t.assignee.name)));
+  const assignees = useMemo(
+    () => Array.from(new Set(tasks.map(t => t.assignee.name))),
+    [tasks]
+  );
 
   // Filter tasks
-  const filteredTasks = mockTasks.filter(task => {
+  const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          task.id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
@@ -66,6 +93,7 @@ export function AdminDashboard() {
       <div className="mb-6">
         <h1 className="text-gray-900 mb-2">Admin Dashboard</h1>
         <p className="text-gray-600">View and manage all tasks across projects</p>
+        {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
       </div>
 
       {/* Filters and Search */}
@@ -159,7 +187,14 @@ export function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredTasks.map((task) => (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-10 text-center text-gray-600">
+                    Loading tasks...
+                  </td>
+                </tr>
+              ) : (
+              filteredTasks.map((task) => (
                 <tr
                   key={task.id}
                   className={`hover:bg-gray-50 transition-colors ${
@@ -223,7 +258,7 @@ export function AdminDashboard() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

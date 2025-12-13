@@ -10,7 +10,8 @@ import { Header } from "./components/Header";
 export type Screen = "login" | "kanban" | "task-detail" | "admin";
 
 // Define your API base URL here for easy maintenance
-const API_BASE_URL = "https://localhost:7007";
+// Update this if your API runs on a different port/profile
+const API_BASE_URL = "http://localhost:5238";
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>("login");
@@ -22,17 +23,14 @@ export default function App() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        // Call the C# API's "me" endpoint.
-        // The API relies on the presence of the authentication cookie.
-        const response = await fetch(`${API_BASE_URL}/api/Auth/me`);
+        const response = await fetch(`${API_BASE_URL}/api/Auth/me`, {
+          credentials: "include",
+        });
 
         if (response.ok) {
-          // User is authenticated, retrieve user data if needed
-          // const userData = await response.json();
           setIsLoggedIn(true);
           setCurrentScreen("kanban");
         } else {
-          // User is not authenticated (status 401 Unauthorized or 404 Not Found)
           setIsLoggedIn(false);
           setCurrentScreen("login");
         }
@@ -120,15 +118,21 @@ export default function App() {
         <Header onLogout={handleLogout} />
         <main className="flex-1 overflow-auto">
           {currentScreen === "kanban" && (
-            <KanbanBoard onTaskClick={handleTaskClick} />
+            <KanbanBoard
+              apiBaseUrl={API_BASE_URL}
+              onTaskClick={handleTaskClick}
+            />
           )}
           {currentScreen === "task-detail" && (
             <TaskDetailView
               taskId={selectedTaskId}
               onBack={handleBackToKanban}
+              apiBaseUrl={API_BASE_URL}
             />
           )}
-          {currentScreen === "admin" && <AdminDashboard />}
+          {currentScreen === "admin" && (
+            <AdminDashboard apiBaseUrl={API_BASE_URL} />
+          )}
         </main>
       </div>
       <ToastNotifications />
