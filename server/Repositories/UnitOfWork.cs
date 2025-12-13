@@ -4,34 +4,23 @@ using Prog3340GroupFinal.Data;
 
 namespace Prog3340GroupFinal.Repositories
 {
-    public class UnitOfWork : IUnitOfWork
-    {
-        private readonly AppDbContext _context;
+	public class UnitOfWork : IUnitOfWork
+	{
+		private readonly AppDbContext _context;
 
-        //private IRepository<Customer>? _customers;
-       
+		public ITaskRepository Tasks { get; }
+		public IUserRepository Users { get; }
 
-        public UnitOfWork(AppDbContext context)
-        {
-            _context = context;
-        }
+		public UnitOfWork(AppDbContext context)
+		{
+			_context = context;
+			Tasks = new TaskRepository(_context);
+			Users = new UserRepository(_context);
+		}
 
-        //public IRepository<Customer> Customers
-        //{
-        //    get
-        //    {
-        //        if (_customers == null)
-        //        {
-        //            _customers = new Repository<Customer>(_context);
-        //        }
-        //        return _customers;
-        //    }
-        //}
-
-        
-        public async Task<int> SaveChangesAsync()
-        {
-            return await _context.SaveChangesAsync();
-        }
-    }
+		public async Task<int> SaveChangesAsync()
+		{
+			return await _context.SaveChangesAsync();
+		}
+	}
 }

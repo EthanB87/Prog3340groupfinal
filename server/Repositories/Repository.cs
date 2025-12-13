@@ -51,16 +51,16 @@ namespace Prog3340GroupFinal.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public void Update(T objType)
-        {
-            _dbSet.Update(objType);
-            _context.SaveChanges();
-        }
+		public async Task UpdateAsync(T objType)
+		{
+			_dbSet.Update(objType);
+			await _context.SaveChangesAsync();
+		}
 
-        public void Delete(T objType)
-        {
-            _dbSet.Remove(objType);
-            _context.SaveChanges();
-        }
+		public async Task DeleteAsync(T objType)
+		{
+			_dbSet.Remove(objType);
+			await _context.SaveChangesAsync();
+		}
     }
 }
