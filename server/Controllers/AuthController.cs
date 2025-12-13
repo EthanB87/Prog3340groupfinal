@@ -1,11 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Prog3340GroupFinal.Data;
 // Assuming you have an AppUser model here
 using Prog3340GroupFinal.Models;
+using Prog3340GroupFinal.Repositories;
+using Prog3340GroupFinal.Services;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -17,15 +20,15 @@ namespace Prog3340GroupFinal.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
+        private readonly JwtService _jwtService;
+        private readonly IPasswordRepository _passwordRepository;
 
-        // Assuming a service for hashing/verification is injected here for security
-        // private readonly IPasswordService _passwordService; 
-
-        public AuthController(AppDbContext db, IConfiguration config /*, IPasswordService passwordService*/)
+        public AuthController(AppDbContext db, IConfiguration config, JwtService jwtService, IPasswordRepository passwordRepository)
         {
             _db = db;
             _config = config;
-            // _passwordService = passwordService;
+            _jwtService = jwtService;
+            _passwordRepository = passwordRepository;
         }
 
         // DTOs (Data Transfer Objects) for requests
@@ -58,25 +61,20 @@ namespace Prog3340GroupFinal.Controllers
             }
 
             // 2. Hash Password (Placeholder for secure implementation)
-            string hashedPassword = HashPassword(request.Password);
+            string hashedPassword = _passwordRepository.HashPassword(request.Password);
 
             // 3. Create new user model
-            var newUser = new AppUser // Assumes AppUser class exists and has these properties
+            var newUser = new AppUser
             {
                 Email = request.Email,
                 Username = request.Username,
                 PasswordHash = hashedPassword,
                 Role = "User", // Default role
-                // Initialize other required fields (Id, CreatedAt, etc.)
             };
 
             // 4. Save to database
             _db.AppUsers.Add(newUser);
             await _db.SaveChangesAsync();
-
-            // Optional: Automatically sign in the user after registration
-            // return await SignInUser(newUser); 
-
             return CreatedAtAction(nameof(Me), new { message = "Registration successful." });
         }
 
@@ -97,8 +95,8 @@ namespace Prog3340GroupFinal.Controllers
                 return Unauthorized(new { message = "Invalid credentials." });
             }
 
-            // 2. Password Verification (Placeholder - MUST BE IMPLEMENTED SECURELY)
-            bool passwordValid = VerifyPassword(request.Password, user.PasswordHash);
+            // 2. Password Verification
+            bool passwordValid = _passwordRepository.VerifyPassword(request.Password, user.PasswordHash);
             if (!passwordValid)
             {
                 return Unauthorized(new { message = "Invalid credentials." });
@@ -122,16 +120,25 @@ namespace Prog3340GroupFinal.Controllers
             // Lookup user in database
             var user = _db.AppUsers.FirstOrDefault(u => u.Email == email);
             if (user == null)
-                // This means the user's claims are valid but they no longer exist in the DB (stale user)
-                return NotFound();
+            {
+                user = new AppUser
+                {
+                    Email = email,
+                    Username = email.Split('@')[0],
+                    Role = "User",
+                    CreatedAt = DateTime.UtcNow,
+                    PasswordHash = ""
+                };
 
+                _db.AppUsers.Add(user);
+                _db.SaveChangesAsync();
+            }
             // Return user info
             return Ok(new
             {
                 user.Id,
                 user.Email,
                 user.Role
-                // Include other relevant public user fields
             });
         }
 
@@ -143,7 +150,6 @@ namespace Prog3340GroupFinal.Controllers
         public IActionResult Refresh()
         {
             // If the request succeeds, it means the current authentication method (cookie or token) is valid.
-            // For a cookie-based system, the cookie is typically renewed automatically here.
             // For JWT, the client would use the claims to generate a new token via JwtService if desired,
             // or you could use a dedicated refresh token flow.
 
@@ -159,7 +165,6 @@ namespace Prog3340GroupFinal.Controllers
             {
                 RedirectUri = returnUrl
             };
-            // Note: This challenges the user, redirecting them to Google.
             return Challenge(props, OpenIdConnectDefaults.AuthenticationScheme);
         }
 
@@ -208,30 +213,19 @@ namespace Prog3340GroupFinal.Controllers
                 new(ClaimTypes.Role, user.Role)
             };
 
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var claimsIdentity = new ClaimsIdentity(claims, JwtBearerDefaults.AuthenticationScheme);
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal);
+            var token = _jwtService.GenerateToken(claimsPrincipal);
 
             return Ok(new
             {
                 user.Id,
                 user.Email,
                 user.Role,
+                Token = token,
                 message = "Sign in successful"
             });
-        }
-
-        private string HashPassword(string password)
-        {
-            // TODO: Implement secure hashing
-            return password;
-        }
-
-        private bool VerifyPassword(string providedPassword, string storedHashedPassword)
-        { 
-            // TODO: Implement a secure password verification here.
-            return true;
         }
 
         private static string ResolveRedirectUrl(string? requestedUrl, string defaultRedirect)

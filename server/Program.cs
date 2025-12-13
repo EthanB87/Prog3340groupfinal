@@ -25,6 +25,7 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseInMemoryDatabase("TaskDb"));
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordRepository, PasswordRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Add services to the container.
 builder.Services.AddControllers();
@@ -122,6 +123,14 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    var repo = scope.ServiceProvider.GetRequiredService<IPasswordRepository>();
+    Console.WriteLine("--- COPY THESE HASHES ---");
+    Console.WriteLine($"admin: {repo.HashPassword("admin")}");
+    Console.WriteLine($"user1: {repo.HashPassword("user1")}");
+    Console.WriteLine($"user2: {repo.HashPassword("user2")}");
+    Console.WriteLine($"user3: {repo.HashPassword("user3")}");
+    Console.WriteLine($"user4: {repo.HashPassword("user4")}");
+    Console.WriteLine("-------------------------");
 }
 
 if (app.Environment.IsDevelopment())
