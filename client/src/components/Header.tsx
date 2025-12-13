@@ -1,16 +1,17 @@
 import { Search, Bell, HelpCircle, LogOut } from "lucide-react";
+import { UserSummary } from "../api/users";
 
 // Define the shape of the user data coming from your API
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  role: string;
-}
+// export interface User {
+//   id: number;
+//   username: string;
+//   email: string;
+//   role: string;
+// }
 
 interface HeaderProps {
   onLogout: () => void;
-  user: User | null;
+  user: UserSummary | null;
 }
 
 export function Header({ onLogout, user }: HeaderProps) {

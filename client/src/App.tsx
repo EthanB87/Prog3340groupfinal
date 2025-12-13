@@ -5,13 +5,13 @@ import { TaskDetailView } from "./components/TaskDetailView";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { ToastNotifications } from "./components/ToastNotifications";
 import { Sidebar } from "./components/Sidebar";
+// 1. Import User type so we can use it in state
 import { Header } from "./components/Header";
 import { saveTokenToStorage, authFetch } from "./utils/auth";
+import { UserSummary } from "./api/users";
 
 export type Screen = "login" | "kanban" | "task-detail" | "admin";
 
-// Define your API base URL here for easy maintenance
-// Update this if your API runs on a different port/profile
 const API_BASE_URL = "https://localhost:7007";
 
 export default function App() {
@@ -20,26 +20,32 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
+  // 2. Add State to hold the User object
+  const [user, setUser] = useState<UserSummary | null>(null);
+
   // --- 1. Effect to Check Authentication Status on Load ---
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        // Call the C# API's "me" endpoint.
-        // The API relies on the presence of the authentication cookie.
         const response = await authFetch(`${API_BASE_URL}/api/Auth/me`);
 
         if (response.ok) {
+          // 3. Parse the JSON to get user details
+          const userData = await response.json();
+          setUser(userData); // Save to state
+
           setIsLoggedIn(true);
           setCurrentScreen("kanban");
         } else {
-          // User is not authenticated (status 401 Unauthorized or 404 Not Found)
           localStorage.removeItem("authToken");
+          setUser(null);
           setIsLoggedIn(false);
           setCurrentScreen("login");
         }
       } catch (error) {
         console.error("Error checking authentication status:", error);
         localStorage.removeItem("authToken");
+        setUser(null);
         setIsLoggedIn(false);
         setCurrentScreen("login");
       } finally {
@@ -48,9 +54,21 @@ export default function App() {
     };
 
     checkAuthStatus();
-  }, []); // Run only once on component mount
+  }, []);
 
-  const handleLogin = () => {
+  // --- Login Handler ---
+  const handleLogin = async () => {
+    // 4. Fetch user data immediately after login so UI updates without refresh
+    try {
+      const response = await authFetch(`${API_BASE_URL}/api/Auth/me`);
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      }
+    } catch (e) {
+      console.error("Failed to fetch user on login", e);
+    }
+
     setIsLoggedIn(true);
     setCurrentScreen("kanban");
   };
@@ -60,25 +78,23 @@ export default function App() {
     handleLogin();
   };
 
-  // --- 2. Updated Logout Handler to Call API ---
+  // --- 2. Updated Logout Handler ---
   const handleLogout = async () => {
     localStorage.removeItem("authToken");
     const redirectUrl = window.location.origin;
 
     try {
-      // Calling the API endpoint which performs SignOut and redirects the browser.
       window.location.href = `${API_BASE_URL}/api/Auth/logout?returnUrl=${encodeURIComponent(
         redirectUrl
       )}`;
 
-      // Note: Because this triggers a full browser redirect, the lines below
-      // will not execute if the redirect is successful. We leave them as a
-      // fallback/cleanup for non-redirect scenarios.
       setIsLoggedIn(false);
+      setUser(null); // Clear user state
       setCurrentScreen("login");
     } catch (error) {
       console.error("Error during logout:", error);
       setIsLoggedIn(false);
+      setUser(null);
       setCurrentScreen("login");
     }
   };
@@ -92,9 +108,7 @@ export default function App() {
     setCurrentScreen("kanban");
   };
 
-  // --- Loading State Render ---
   if (isLoading) {
-    // Display a simple loading message while checking auth status
     return (
       <div className="flex h-screen items-center justify-center text-xl text-gray-700">
         Loading...
@@ -102,13 +116,12 @@ export default function App() {
     );
   }
 
-  // --- Login Screen Render (If Not Logged In) ---
   if (!isLoggedIn) {
     return (
       <>
         <LoginScreen
           onLogin={handleLogin}
-          apiBaseUrl={API_BASE_URL} // Use the defined constant
+          apiBaseUrl={API_BASE_URL}
           saveToken={handleSaveToken}
         />
         <ToastNotifications />
@@ -116,12 +129,19 @@ export default function App() {
     );
   }
 
-  // --- Main App Render (If Logged In) ---
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar currentScreen={currentScreen} onNavigate={setCurrentScreen} />
+      {/* 5. Pass User to Sidebar (for Role check) */}
+      <Sidebar
+        currentScreen={currentScreen}
+        onNavigate={setCurrentScreen}
+        user={user}
+      />
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={handleLogout} user={null} />
+        {/* 6. Pass User to Header (for Name/Avatar) */}
+        <Header onLogout={handleLogout} user={user} />
+
         <main className="flex-1 overflow-auto">
           {currentScreen === "kanban" && (
             <KanbanBoard
