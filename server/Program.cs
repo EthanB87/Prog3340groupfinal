@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Prog3340GroupFinal.Data;
 using Prog3340GroupFinal.Hubs;
 using Prog3340GroupFinal.Repositories;
+using Prog3340GroupFinal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,6 +74,8 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<TaskCleanupService>();
 
 var app = builder.Build();
 
