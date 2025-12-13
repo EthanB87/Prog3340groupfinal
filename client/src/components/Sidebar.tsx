@@ -1,15 +1,42 @@
-import { LayoutDashboard, KanbanSquare, Settings, Users } from 'lucide-react';
-import { Screen } from '../App';
+import {
+  LayoutDashboard,
+  KanbanSquare,
+  Settings,
+  Users,
+  LucideIcon,
+} from "lucide-react";
+import { Screen } from "../App";
+import { UserSummary } from "../api/users";
 
 interface SidebarProps {
   currentScreen: Screen;
   onNavigate: (screen: Screen) => void;
+  user: UserSummary | null;
 }
 
-export function Sidebar({ currentScreen, onNavigate }: SidebarProps) {
-  const menuItems = [
-    { id: 'kanban' as Screen, label: 'Board', icon: KanbanSquare },
-    { id: 'admin' as Screen, label: 'Admin', icon: LayoutDashboard },
+interface MenuItem {
+  id: Screen;
+  label: string;
+  icon: LucideIcon;
+  isVisible: boolean;
+}
+
+export function Sidebar({ currentScreen, onNavigate, user }: SidebarProps) {
+  const role = user?.role || user?.role || "User";
+  const isAdmin = role.toLowerCase() === "admin";
+  const menuItems: MenuItem[] = [
+    {
+      id: "kanban" as Screen,
+      label: "Board",
+      icon: KanbanSquare,
+      isVisible: true,
+    },
+    {
+      id: "admin" as Screen,
+      label: "Admin",
+      icon: LayoutDashboard,
+      isVisible: isAdmin,
+    },
   ];
 
   return (
@@ -30,14 +57,15 @@ export function Sidebar({ currentScreen, onNavigate }: SidebarProps) {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentScreen === item.id;
+            if (!item.isVisible) return null;
             return (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive
-                    ? 'bg-[#0747a6] text-white'
-                    : 'text-blue-100 hover:bg-blue-700'
+                    ? "bg-[#0747a6] text-white"
+                    : "text-blue-100 hover:bg-blue-700"
                 }`}
               >
                 <Icon className="w-5 h-5" />
