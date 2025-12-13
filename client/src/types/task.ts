@@ -8,11 +8,13 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   assignee: {
+    id?: number;
     name: string;
     avatar: string;
     initials: string;
   };
   reporter: {
+    id?: number;
     name: string;
     avatar: string;
     initials: string;

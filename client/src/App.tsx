@@ -11,6 +11,7 @@ import { saveTokenToStorage, authFetch } from "./utils/auth";
 export type Screen = "login" | "kanban" | "task-detail" | "admin";
 
 // Define your API base URL here for easy maintenance
+// Update this if your API runs on a different port/profile
 const API_BASE_URL = "https://localhost:7007";
 
 export default function App() {
@@ -28,8 +29,6 @@ export default function App() {
         const response = await authFetch(`${API_BASE_URL}/api/Auth/me`);
 
         if (response.ok) {
-          // User is authenticated, retrieve user data if needed
-          // const userData = await response.json();
           setIsLoggedIn(true);
           setCurrentScreen("kanban");
         } else {
@@ -125,18 +124,24 @@ export default function App() {
         <Header onLogout={handleLogout} />
         <main className="flex-1 overflow-auto">
           {currentScreen === "kanban" && (
-            <KanbanBoard onTaskClick={handleTaskClick} />
+            <KanbanBoard
+              apiBaseUrl={API_BASE_URL}
+              onTaskClick={handleTaskClick}
+            />
           )}
           {currentScreen === "task-detail" && (
             <TaskDetailView
               taskId={selectedTaskId}
               onBack={handleBackToKanban}
+              apiBaseUrl={API_BASE_URL}
             />
           )}
-          {currentScreen === "admin" && <AdminDashboard />}
+          {currentScreen === "admin" && (
+            <AdminDashboard apiBaseUrl={API_BASE_URL} />
+          )}
         </main>
       </div>
-      <ToastNotifications />
+      {/* <ToastNotifications /> */}
     </div>
   );
 }

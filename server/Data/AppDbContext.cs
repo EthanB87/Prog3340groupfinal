@@ -36,6 +36,70 @@ namespace Prog3340GroupFinal.Data
 				new AppUser { Id = 4, Email = "user3@example.com", Username = "user3", PasswordHash = "FdCpl5CnSNSIBnFXBTV9Ju8x6Oh6xGzfqMcQQ3y6uvJTn6e0W/FgNGSX4TysmC/2", Role = "User", CreatedAt = now },
 				new AppUser { Id = 5, Email = "user4@example.com", Username = "user4", PasswordHash = "G3VDvmsMOmeEpv9nGqYcKsOueZoVie1WirnAj0oanlTCs2H9Mc3FU+nPf2y/ngWU", Role = "User", CreatedAt = now }
 			);
+
+			modelBuilder.Entity<Models.Task>().HasData(
+				new Models.Task
+				{
+					Id = 1,
+					Title = "Implement user authentication",
+					Description = "Add OAuth2 authentication with Google and JWT support.",
+					Status = Models.TaskStatus.Development,
+					CreatedById = 1,
+					AssignedToId = 2,
+					CreatedAt = now.AddDays(-5),
+					UpdatedAt = now.AddDays(-1),
+					IsArchived = false
+				},
+				new Models.Task
+				{
+					Id = 2,
+					Title = "Design landing page mockups",
+					Description = "Create high-fidelity mockups for the landing page.",
+					Status = Models.TaskStatus.Review,
+					CreatedById = 2,
+					AssignedToId = 3,
+					CreatedAt = now.AddDays(-10),
+					UpdatedAt = now.AddDays(-2),
+					IsArchived = false
+				},
+				new Models.Task
+				{
+					Id = 3,
+					Title = "Fix mobile responsive issues",
+					Description = "Address layout breaking on mobile devices.",
+					Status = Models.TaskStatus.ToDo,
+					CreatedById = 3,
+					AssignedToId = 4,
+					CreatedAt = now.AddDays(-3),
+					UpdatedAt = now.AddDays(-3),
+					IsArchived = false
+				},
+				new Models.Task
+				{
+					Id = 4,
+					Title = "API documentation refresh",
+					Description = "Update endpoint docs with new auth requirements.",
+					Status = Models.TaskStatus.Merge,
+					CreatedById = 4,
+					AssignedToId = 5,
+					CreatedAt = now.AddDays(-7),
+					UpdatedAt = now.AddDays(-1),
+					IsArchived = false
+				},
+				new Models.Task
+				{
+					Id = 5,
+					Title = "Archived task example",
+					Description = "This task is archived and should show in admin only.",
+					Status = Models.TaskStatus.Done,
+					CreatedById = 1,
+					AssignedToId = 2,
+					CreatedAt = now.AddDays(-20),
+					UpdatedAt = now.AddDays(-15),
+					IsArchived = true,
+					ArchivedAt = now.AddDays(-14)
+				}
+			);
 		}
 	}
 }

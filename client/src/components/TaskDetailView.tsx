@@ -1,19 +1,55 @@
+import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUp, ArrowDown, Minus, AlertCircle, Calendar, User, Flag, MoreHorizontal, Paperclip, Link as LinkIcon } from 'lucide-react';
-import { mockTasks } from '../data/mockTasks';
+import { fetchTaskById, updateTaskStatus } from '../api/tasks';
+import { Task, TaskStatus } from '../types/task';
 
 interface TaskDetailViewProps {
   taskId: string | null;
   onBack: () => void;
+  apiBaseUrl: string;
 }
 
-export function TaskDetailView({ taskId, onBack }: TaskDetailViewProps) {
-  const task = mockTasks.find(t => t.id === taskId);
+export function TaskDetailView({ taskId, onBack, apiBaseUrl }: TaskDetailViewProps) {
+  const [task, setTask] = useState<Task | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  if (!task) {
+  useEffect(() => {
+    const load = async () => {
+      if (!taskId) {
+        setError('No task selected');
+        setIsLoading(false);
+        return;
+      }
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchTaskById(apiBaseUrl, taskId);
+        setTask(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unable to load task');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    load();
+  }, [taskId, apiBaseUrl]);
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-600">
+        Loading task...
+      </div>
+    );
+  }
+
+  if (!task || error) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Task not found</p>
+          <p className="text-gray-600 mb-4">{error ?? 'Task not found'}</p>
           <button
             onClick={onBack}
             className="px-4 py-2 bg-[#0052cc] text-white rounded-lg hover:bg-[#0747a6]"
@@ -64,6 +100,22 @@ export function TaskDetailView({ taskId, onBack }: TaskDetailViewProps) {
       done: 'bg-green-100 text-green-800'
     };
     return colors[task.status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const handleStatusChange = async (status: TaskStatus) => {
+    if (!task) return;
+    try {
+      setIsSaving(true);
+      const updated = await updateTaskStatus(apiBaseUrl, task.id, {
+        ...task,
+        status
+      });
+      setTask(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update status');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -218,7 +270,9 @@ export function TaskDetailView({ taskId, onBack }: TaskDetailViewProps) {
               </div>
               <select
                 value={task.status}
-                className={`w-full px-3 py-2 rounded-lg ${getStatusColor()}`}
+                onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
+                disabled={isSaving}
+                className={`w-full px-3 py-2 rounded-lg ${getStatusColor()} ${isSaving ? 'opacity-60 cursor-wait' : ''}`}
               >
                 <option value="todo">To-Do</option>
                 <option value="development">Development</option>

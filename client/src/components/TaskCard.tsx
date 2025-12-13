@@ -4,9 +4,12 @@ import { Task } from '../types/task';
 interface TaskCardProps {
   task: Task;
   onClick: () => void;
+  draggable?: boolean;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export function TaskCard({ task, onClick, draggable, onDragStart, onDragEnd }: TaskCardProps) {
   const getPriorityIcon = () => {
     switch (task.priority) {
       case 'highest':
@@ -40,6 +43,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
   return (
     <div
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       className={`bg-white rounded-lg border-l-4 ${getPriorityColor()} shadow-sm hover:shadow-md transition-shadow cursor-pointer p-4 mb-3`}
     >
       {/* Task ID and Priority */}

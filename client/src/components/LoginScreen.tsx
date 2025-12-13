@@ -63,6 +63,10 @@ export function LoginScreen({
     const loginUrl = `${apiBaseUrl}/api/Auth/login`;
     const returnUrl = window.location.origin; // Redirect back to frontend root (localhost:3000)
 
+    // Optionally, you can add a returnUrl query parameter
+    // so the API redirects the user back to a specific page after successful auth.
+    // For example, redirect back to the app's root page ('/')
+    const returnUrl = window.location.origin;
     const finalRedirectUrl = `${loginUrl}?returnUrl=${encodeURIComponent(
       returnUrl
     )}`;
