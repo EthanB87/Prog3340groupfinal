@@ -114,19 +114,6 @@ builder.Services.AddAuthentication(options =>
     options.Scope.Add("openid");
     options.Scope.Add("profile");
     options.Scope.Add("email");
-
-    //options.Events = new Microsoft.AspNetCore.Authentication.OpenIdConnect.OpenIdConnectEvents
-    //{
-    //    OnRedirectToIdentityProvider = context =>
-    //    {
-    //        if (context.Request.Path.StartsWithSegments("/api"))
-    //        {
-    //            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-    //            context.HandleResponse();
-    //        }
-    //        return Task.CompletedTask;
-    //    }
-    //};
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
